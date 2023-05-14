@@ -1,5 +1,0 @@
-ShotSeq,HitFrame,Hitter,RoundHead,Backhand,BallHeight,LandingX,LandingY,HitterLocationX,HitterLocationY,DefenderLocationX,DefenderLocationY,BallType,Winner
-1,26,B,2,1,2,672,458,622,567,723,418,1,X
-2,47,A,2,1,1,609,586,633,460,649,576,9,X
-3,58,B,2,2,2,523,431,671,583,624,456,8,X
-4,75,A,2,2,1,499,522,599,436,657,600,6,A
