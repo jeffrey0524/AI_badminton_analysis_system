@@ -13,9 +13,9 @@ piexif = "*"
 pandas = "*"
 matplotlib = "*"
 scikit-learn = "*"
-torch = "*"
-torchvision = "*"
-torchaudio = "*"
+torch = "==1.13.0"
+torchvision = "==0.14.0"
+torchaudio = "==0.13.0"
 
 [dev-packages]
 black = "*"

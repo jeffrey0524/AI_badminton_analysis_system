@@ -1,9 +1,3 @@
-from pathlib import Path
-PROJECT_DIR = Path(__file__).resolve().parents[2]
-if __name__ == '__main__':
-    import sys
-    sys.path.append(str(PROJECT_DIR))
-
 import sys
 import getopt
 import numpy as np

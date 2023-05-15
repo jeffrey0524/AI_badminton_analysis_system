@@ -1,3 +1,5 @@
+from pathlib import Path
+PROJECT_DIR = Path(__file__).resolve().parents[1]
 import os
 from random import randint
 import pandas as pd
@@ -5,10 +7,9 @@ import numpy as np
 import cv2
 import pickle
 from datetime import datetime
-import torch
 import gc
 
-import csv_change
+# import csv_change
 import pre_process
 
 # global veriable define
@@ -18,61 +19,6 @@ frame_h = 720
 frame_channal = 3
 frame_color = cv2.IMREAD_COLOR # cv2.IMREAD_COLOR  cv2.IMREAD_GRAYSCALE
 nonhit_labal = [0, 0, 'X', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'X']
-train_size = 100
-
-def data_process(dir_path:str):
-    paths = os.listdir(dir_path)
-    paths.sort()
-    csv_list = []
-    train_cube = np.full((0,frame_h,frame_w,frame_channal,11),0)
-    hit_frame_list_list = []
-    img_dir_path_list = []
-    for path in paths:
-        # print('video:',path)
-        csv_path = f'{dir_path}/{path}/{path}_S2.csv'
-        #? deal with csv
-        hit_frame_list = __read_csv_random_shot(f'{dir_path}/{path}/{path}_S2.csv')
-        labal = pd.read_csv(csv_path).values.tolist()
-        for i in range(len(labal)):
-            labal[i][2] = labal[i][2][0]     # remove ' '
-        csv_list += labal
-        #? mix with a not hit data
-        difference = []
-        for i in range(len(hit_frame_list)-1):
-            difference.append(hit_frame_list[i+1] - hit_frame_list[i])
-            continue
-        if len(difference) >=1:
-            if max(difference)>20:
-                nonhit_frame = randint(hit_frame_list[difference.index(max(difference))]+10, hit_frame_list[difference.index(max(difference))+1]-10)
-                hit_frame_list.append(nonhit_frame)
-                csv_list.append(nonhit_labal)
-        #? deal wiht cube
-        img_dir_path = f'part1/train/{path}/{path}'
-        if not os.path.isdir(img_dir_path):
-            background, img_dir_path = pre_process.get_field(f'{dir_path}/{path}/{path}.mp4', img_dir_path)
-        #? save as list
-        hit_frame_list_list += hit_frame_list
-        # print(hit_frame_list_list)
-        while len(img_dir_path_list)<len(hit_frame_list_list):
-            img_dir_path_list.append(img_dir_path)
-        # print(img_dir_path_list)
-        continue
-    print('concat start ', datetime.now())
-    # train_cube = get_train_cube(hit_frame_list_list,img_dir_path_list)
-    # for i in range(0,len(hit_frame_list_list),train_size):
-    #     if len(hit_frame_list_list) - i < train_size:
-    #         train_cube = get_train_cube(hit_frame_list_list[i:-1],img_dir_path_list[i:-1])
-    #         print(i,' : ',np.shape(train_cube))
-    #         save_pickle(train_cube,csv_list[i:-1])
-    #     else:
-    #         train_cube = get_train_cube(hit_frame_list_list[i:i+train_size],img_dir_path_list[i:i+train_size])
-    #         print(i,' : ',np.shape(train_cube))
-    #         save_pickle(train_cube,csv_list[i:i+train_size])
-    #     # with open(f'{pickle_path}/cube_{i}_{i+train_size}.pickle', 'wb') as f:
-    #     #     pickle.dump(train_cube, f)
-    #     train_cube = np.full((0,frame_h,frame_w,frame_channal,11),0)
-    #     gc.collect()
-    return train_cube,csv_list
 
 def get_train_cube(hit_frame_list,img_dir_path):
     long = len(hit_frame_list)
@@ -180,18 +126,6 @@ def __one_cube(hit_frame,img_dir_path):
     one_cube = np.concatenate([img0,img1,img2,img3,img4,img5,img6,img7,img8,img9,img10],axis=3)
     return one_cube.reshape(1,frame_h,frame_w,frame_channal,11)
 
-def __get_nonhit_frame(hit_frame_list):
-    # after - before than detect which is longest than random to take a 11frame cube
-    difference = []
-    for i in range(len(hit_frame_list)-1):
-        difference.append(hit_frame_list[i+1] - hit_frame_list[i])
-        continue
-    # print(hit_frame_list)
-    # print(difference)
-    if max(difference)>20:
-        nonhit_frame = randint(hit_frame_list[difference.index(max(difference))]+10, hit_frame_list[difference.index(max(difference))+1]-10)
-    return nonhit_frame
-
 def __read_csv_random_shot(csv_path:str) -> list[int]:
     df = pd.read_csv(csv_path)
     hit_list = df[df.columns[1]].values.tolist()
@@ -199,14 +133,14 @@ def __read_csv_random_shot(csv_path:str) -> list[int]:
         hit_list[i] += randint(-5,5)
     return hit_list
 
-def save_pickle(cube, labal_csv):
+def __save_pickle(cube, labal_csv):
     with open(f'{pickle_path}/cube.pickle', 'wb') as f:
         pickle.dump(cube, f)
     with open(f'{pickle_path}/csv.pickle', 'wb') as f:
         pickle.dump(labal_csv, f)
     pass
 
-def load_pickle():
+def __load_pickle():
     with open(f'{pickle_path}/cube.pickle', 'rb') as f:
         cube = pickle.load(f)
     with open(f'{pickle_path}/csv.pickle', 'rb') as f:
@@ -219,7 +153,9 @@ def get_data_list(dir_path:str):
     result = []
     for path in paths:
         csv_path = f'{dir_path}/{path}/{path}_S2.csv'
-        img_dir_path = f'part1/train/{path}/{path}'
+        img_dir_path = f'{dir_path}/{path}/{path}'
+        if not os.path.isdir(img_dir_path):
+            background, img_dir_path = pre_process.get_field(f'{dir_path}/{path}/{path}.mp4', img_dir_path)
         hitframes = __read_csv_random_shot(csv_path)
         labal_list = pd.read_csv(csv_path).values.tolist()
         for i in range(len(labal_list)):
@@ -239,6 +175,7 @@ def get_data_list(dir_path:str):
             #? list to tensor
             # list[1, 8, 'B', 2, 2, 2, 736, 386, 633, 565, 724, 415, 2, 'X'] =>
             # tensor[0,0,0,0,0,0,0,0,1,0,0, 0,1,0, 0,1, 0,1, 0,1, [20]736, 386, 633, 565, 724, 415, 0,1,0,0,0,0,0,0,0, 0,0,1]
+            import torch
             tensor = torch.zeros(38)
             tensor[labal_list[i][1]] = 1
             if labal_list[i][3] == 1: tensor[14] = 1
@@ -277,35 +214,23 @@ def list_to_cube(data_list): # :list[[str,int,list],[str,int,list]]
         hit_frame_list.append(i[1])
     return get_train_cube(hit_frame_list,img_path_list)
 
-def csv_Unite():
-    filenames = get_filenames('Data/part1/train/', '*S2.csv')
-    filenames.sort()
-    for filename in filenames:
-        df = pd.read_csv(filename)
-    
-        df.rename(columns={'BallLocationX': 'LandingX'}, inplace=True)
-        df.rename(columns={'BallLocationY': 'LandingY'}, inplace=True)
-        df.columns = df.columns.str.replace(' ', '')
-        df.to_csv(filename, index=False)
-    pass
 if __name__ == '__main__':
     aatime = datetime.now()
     # print('start_time',aatime)
-    dir_path = './part1/train'
-    dir_path = 'test_part1/train'
-    # cube, labal_csv = load_pickle()
+    dir_path = PROJECT_DIR/'part1/train'
+    dir_path = PROJECT_DIR/'test_part1/train'
+    # cube, labal_csv = __load_pickle()
     # cube, labal_csv = data_process(dir_path)
     # print('cube shape = ',np.shape(cube))
     # print(len(labal_csv))
     # pd.DataFrame(labal_csv).to_csv('./labal.csv')
     # print('spend_time = ',datetime.now()-aatime)
-    # save_pickle(cube, labal_csv)
+    # __save_pickle(cube, labal_csv)
 
     data_list = get_data_list(dir_path)
     # print(len(data_list))
-
     print(data_list[0:5])
-    # train_cube = list_to_cube(data_list[0:3])
-    # print(train_cube.shape)
+    train_cube = list_to_cube(data_list[0:3])
+    print(train_cube.shape)
 
     pass

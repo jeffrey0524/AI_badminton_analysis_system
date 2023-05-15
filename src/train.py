@@ -3,7 +3,7 @@ import torch.nn as nn
 import torchvision
 from torch.nn import functional as F
 from torch.utils.tensorboard import SummaryWriter
-from torchvision.models import efficientnet
+from torchvision.models import efficientnet, resnet18
 from torch.utils.data import Dataset, DataLoader, random_split
 from sklearn.model_selection import train_test_split
 import pickle
@@ -35,12 +35,25 @@ class BadmintonDataset(Dataset):
         return len(self.data)
 
 class Module(nn.Module):
-    def __init__(self):
+    def __init__(self, device):
         super(Module, self).__init__()
         # find the feature
-        self.features = efficientnet.efficientnet_b1(pretrained=True)   
+        print("yaaa")
+        self.device = device
+        print(self.device)
+        self.conv3d = nn.Conv3d(in_channels=3, out_channels=3, kernel_size=(11, 1, 1)).to(self.device).type(torch.cuda.FloatTensor)
 
+        self.features = efficientnet.efficientnet_b1(pretrained=True)
+        
     def forward(self, x):
+        device = self.device
+        print(device)
+        x = x.permute(0, 3, 4, 1, 2)
+        x = x.float()
+        x = x.to(device)
+
+        x = self.conv3d(x)
+
         x = self.features(x)
         x[:, :14] = nn.Softmax()(x[:, :14])
         x[:, 15:20] = nn.Sigmoid()(x[:, 15:20])
@@ -49,8 +62,8 @@ class Module(nn.Module):
         return x
         
 def trainer(train_loader, valid_loader, model, config, device):
-    loss_func1 = nn.CrossEntropyLoss
-    loss_func2 = nn.BCELoss
+    loss_func1 = nn.CrossEntropyLoss()
+    loss_func2 = nn.BCELoss()
 
     optimizer = torch.optim.Adam(model.parameters(), lr=config['learning_rate']) 
 
@@ -60,12 +73,15 @@ def trainer(train_loader, valid_loader, model, config, device):
     for epoch in range(n_epochs):
         model.train()
         loss_record = []
+        print("checkpoint1")
 
         # total loss
         for x, y in train_loader:
             optimizer.zero_grad()
             x, y = x.to(device), y.to(device)
+            print('1')
             pred = model(x)
+            print("checkpoint2")
             loss_frame = loss_func1(pred[:, :11], y)
             loss_hitter = loss_func1(pred[:, 12:14], y)
             loss_roundhead = loss_func2(pred[:, 15:16], y)
@@ -144,40 +160,46 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 config = {
     'valid_ratio': 0,   # validation_size = train_size * valid_ratio
-    'n_epochs': 100,     # Number of epochs.            
-    'batch_size': 100, 
+    'n_epochs': 30,     # Number of epochs.            
+    'batch_size': 1, 
     'learning_rate': 1e-5,              
     'early_stop': 20,    # If model has not improved for this many consecutive epochs, stop training.     
     'save_path': './models/model.ckpt'  # Your model will be saved here.
 }
-with open('/home/aivc2/AI_bedminton_dataset/src/pickle/cube.pickle', 'rb') as file:
-    train_data = pickle.load(file)
+# with open('/home/aivc2/AI_bedminton_dataset/src/pickle/cube.pickle', 'rb') as file:
+#     train_data = pickle.load(file)
 
-data = dataprocess.get_data_list('../test_part1/train/')
+data_list = dataprocess.get_data_list('../test_part1/train/')
 labels = []
-for i in data:
+for i in data_list:
     labels.append(i[2])
 
+#! all train data is too big
+train_data = dataprocess.list_to_cube(data_list)
 print(train_data.shape)
+# print(train_data.shape)
 # with open('test_data.pickle', 'rb') as file:
 #     test_data = pickle.load(file)
 
 train_data, valid_data, train_labels, valid_labels = train_test_split(train_data, labels, test_size=0.1, random_state=42)
-
+print(train_data.shape, len(train_labels))
+print(valid_data.shape, len(valid_labels))
 # print(f"""train_data size: {train_data.shape} 
 # valid_data size: {valid_data.shape} 
 # """)
 
-train_dataset , valid_dataset = BadmintonDataset(train_data, labels),\
-                                BadmintonDataset(valid_data, labels)
+train_dataset , valid_dataset = BadmintonDataset(train_data, train_labels),\
+                                BadmintonDataset(valid_data, valid_labels)
 
-
-
-
-train_loader = DataLoader(train_dataset, batch_size=config['batch_size'], shuffle=True, pin_memory=True)
-valid_loader = DataLoader(valid_dataset, batch_size=config['batch_size'], shuffle=True, pin_memory=True)
+train_loader = DataLoader(train_dataset, batch_size=config['batch_size'], shuffle=True)
+valid_loader = DataLoader(valid_dataset, batch_size=config['batch_size'], shuffle=True)
 # test_loader = DataLoader(test_data, batch_size=config['batch_size'], shuffle=False, pin_memory=True)
 
-model = Module()
-print(train_loader,  valid_loader)
+# for x,y in train_loader:
+#     print('x:',x)
+#     print('y:',y)
+
+model = Module(device)
+# print(model)
+
 trainer(train_loader, valid_loader, model, config, device)

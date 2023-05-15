@@ -173,7 +173,7 @@ config = {
     'batch_size': 256, 
     'learning_rate': 1e-5,              
     'early_stop': 400,    # If model has not improved for this many consecutive epochs, stop training.     
-    'save_path': './models/model.ckpt'  # Your model will be saved here.
+    'save_path': '../covid hw1'  # Your model will be saved here.
 }
      
 # Set seed for reproducibility
@@ -183,7 +183,7 @@ same_seed(config['seed'])
 # train_data size: 2699 x 118 (id + 37 states + 16 features x 5 days) 
 # test_data size: 1078 x 117 (without last day's positive rate)
 
-train_data, test_data = pd.read_csv('covid.train_new.csv').values, pd.read_csv('covid.test_un.csv').values
+train_data, test_data = pd.read_csv('/home/aivc2/AI_bedminton_dataset/src/train/covid hw1/covid.train_new.csv').values, pd.read_csv('/home/aivc2/AI_bedminton_dataset/src/train/covid hw1/covid.test_un.csv').values
 train_data, valid_data = train_valid_split(train_data, config['valid_ratio'], config['seed'])
 # Print out the data size.
 print(f"""train_data size: {train_data.shape} 
@@ -198,13 +198,14 @@ print(f'number of features: {x_train.shape[1]}')
 train_dataset, valid_dataset, test_dataset = COVID19Dataset(x_train, y_train), \
                                             COVID19Dataset(x_valid, y_valid), \
                                             COVID19Dataset(x_test)
+print(train_dataset)
 
 # Pytorch data loader loads pytorch dataset into batches.
 train_loader = DataLoader(train_dataset, batch_size=config['batch_size'], shuffle=True, pin_memory=True)
 valid_loader = DataLoader(valid_dataset, batch_size=config['batch_size'], shuffle=True, pin_memory=True)
 test_loader = DataLoader(test_dataset, batch_size=config['batch_size'], shuffle=False, pin_memory=True)
      
-
+print(train_loader)
 
 # model = My_Model(input_dim=x_train.shape[1]).to(device) # put your model and data on the same computation device.
 # trainer(train_loader, valid_loader, model, config, device)
